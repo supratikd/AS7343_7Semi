@@ -461,24 +461,25 @@ td {
                                     x1="0%" y1="0%"
                                     x2="100%" y2="0%">
                         <stop offset="0%" stop-color="#7c3aed"/>
-                        <stop offset="6.78%" stop-color="#5b21b6"/>
+                        <stop offset="6.78%" stop-color="#6d28d9"/>
                         <stop offset="15.25%" stop-color="#2563eb"/>
                         <stop offset="23.73%" stop-color="#0891b2"/>
                         <stop offset="37.29%" stop-color="#16a34a"/>
                         <stop offset="49.15%" stop-color="#84cc16"/>
                         <stop offset="50.85%" stop-color="#eab308"/>
                         <stop offset="66.10%" stop-color="#f97316"/>
-                        <stop offset="79.66%" stop-color="#ef4444"/>
-                        <stop offset="96.61%" stop-color="#b91c1c"/>
-                        <stop offset="100%" stop-color="#991b1b"/>
+                        <stop offset="79.66%" stop-color="#dc2626"/>
+                        <stop offset="96.61%" stop-color="#991b1b"/>
+                        <stop offset="100%" stop-color="#7f1d1d"/>
                     </linearGradient>
 
                     <!-- NIR -->
                     <linearGradient id="nirSpectrum"
                                     x1="0%" y1="0%"
                                     x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#b91c1c"/>
-                        <stop offset="100%" stop-color="#5b21b6"/>
+                        <stop offset="0%" stop-color="#7f1d1d"/>
+                        <stop offset="29.03%" stop-color="#9d174d"/>
+                        <stop offset="100%" stop-color="#312e81"/>
                     </linearGradient>
 
                     <linearGradient id="spectralLineGradient"
@@ -493,10 +494,10 @@ td {
                         <stop offset="32.22%" stop-color="#84cc16"/>
                         <stop offset="33.33%" stop-color="#eab308"/>
                         <stop offset="43.33%" stop-color="#f97316"/>
-                        <stop offset="52.22%" stop-color="#ef4444"/>
-                        <stop offset="63.33%" stop-color="#b91c1c"/>
-                        <stop offset="75.56%" stop-color="#7e22ce"/>
-                        <stop offset="100%" stop-color="#4c1d95"/>
+                        <stop offset="52.22%" stop-color="#dc2626"/>
+                        <stop offset="63.33%" stop-color="#991b1b"/>
+                        <stop offset="75.56%" stop-color="#9d174d"/>
+                        <stop offset="100%" stop-color="#312e81"/>
                     </linearGradient>
 
                 </defs>
@@ -604,10 +605,10 @@ const channels = [
     {name:"F5",  wavelength:550, region:"Green-Yellow", color:"#84cc16"},
     {name:"FY",  wavelength:555, region:"Yellow-Green", color:"#eab308"},
     {name:"FXL", wavelength:600, region:"Orange", color:"#f97316"},
-    {name:"F6",  wavelength:640, region:"Red", color:"#ef4444"},
-    {name:"F7",  wavelength:690, region:"Deep Red", color:"#b91c1c"},
-    {name:"F8",  wavelength:745, region:"Red Near Infrared", color:"#7e22ce"},
-    {name:"NIR", wavelength:855, region:"Near Infrared", color:"#4c1d95"}
+    {name:"F6",  wavelength:640, region:"Red", color:"#dc2626"},
+    {name:"F7",  wavelength:690, region:"Deep Red", color:"#991b1b"},
+    {name:"F8",  wavelength:745, region:"Red Near Infrared", color:"#9d174d"},
+    {name:"NIR", wavelength:855, region:"Near Infrared", color:"#312e81"}
 ];
 let ledOn = true;
 
