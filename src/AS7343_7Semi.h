@@ -38,7 +38,14 @@ public:
 	bool enableFlickerDetection(bool enable = true);
 	bool flickerDetectionValid();
 	bool flickerDetectionSaturated();
-	uint16_t flickerFrequencyHz();
+	bool getFlickerInfo(bool& detected, uint16_t& frequencyHz);
+	bool configureFlickerFifo(uint16_t integrationTicks = 200);
+	bool readFlickerFifo(uint8_t* samples, uint16_t capacity, uint16_t& sampleCount);
+	bool flickerFifoOverflowed(bool& overflowed);
+	static bool estimateFlickerFrequencyHz(const uint8_t* samples,
+	                                       uint16_t sampleCount,
+	                                       float sampleRateHz,
+	                                       float& frequencyHz);
 	void configureAutoSMUX();
 	void setIntegration();
 	void powerOn();

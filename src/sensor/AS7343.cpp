@@ -1,4 +1,5 @@
 #include "AS7343.h"
+#include <math.h>
 
 namespace {
 
@@ -16,6 +17,14 @@ constexpr uint8_t REG_ASTEP_H  = 0xD5;
 constexpr uint8_t REG_CFG20    = 0xD6;
 constexpr uint8_t REG_DATA_0_L = 0x95;
 constexpr uint8_t REG_FD_STATUS = 0xE3;
+constexpr uint8_t REG_CFG0 = 0xBF;
+constexpr uint8_t REG_FD_TIME_1 = 0xE0;
+constexpr uint8_t REG_FD_TIME_2 = 0xE2;
+constexpr uint8_t REG_FIFO_CFG0 = 0xDF;
+constexpr uint8_t REG_FIFO_LVL = 0xFD;
+constexpr uint8_t REG_FDATA_L = 0xFE;
+constexpr uint8_t REG_STATUS4 = 0xBC;
+constexpr uint8_t REG_CONTROL = 0xFA;
 
 // Identification
 constexpr uint8_t REG_AUXID = 0x58;
@@ -26,6 +35,11 @@ constexpr uint8_t REG_ID    = 0x5A;
 constexpr uint8_t ENABLE_PON   = 0x01;
 constexpr uint8_t ENABLE_SP_EN = 0x02;
 constexpr uint8_t ENABLE_FDEN  = 0x40;
+constexpr uint8_t REGISTER_BANK1 = 0x10;
+constexpr uint8_t FIFO_8BIT_FLICKER = 0x80;
+constexpr uint8_t FIFO_WRITE_FLICKER = 0x80;
+constexpr uint8_t FIFO_CLEAR = 0x02;
+constexpr uint8_t FIFO_OVERFLOW = 0x80;
 constexpr uint8_t STATUS2_AVALID = 0x40;
 constexpr uint8_t FD_100HZ_DET = 0x01;
 constexpr uint8_t FD_120HZ_DET = 0x02;
@@ -58,11 +72,19 @@ AS7343::AS7343()
 bool AS7343::begin(TwoWire& wire) {
     I2CDevice::begin(wire);
 
-    const uint8_t aux = read8(REG_AUXID);
-    const uint8_t rev = read8(REG_REVID);
-    const uint8_t id = read8(REG_ID);
+    uint8_t aux = 0;
+    uint8_t rev = 0;
+    uint8_t id = 0;
+    if (!selectRegisterBank(true)) {
+        return false;
+    }
+    const bool idsRead = readBytes(REG_AUXID, &aux, 1) &&
+                         readBytes(REG_REVID, &rev, 1) &&
+                         readBytes(REG_ID, &id, 1);
+    const bool bankRestored = selectRegisterBank(false);
 
-    return aux != 0xFF && rev != 0xFF && id != 0xFF;
+    return idsRead && bankRestored &&
+           aux != 0xFF && rev != 0xFF && id != 0xFF;
 }
 
 bool AS7343::begin(int8_t sdaPin, int8_t sclPin, TwoWire& wire) {
@@ -119,17 +141,28 @@ bool AS7343::startMeasurement() {
         return false;
     }
 
-    uint8_t enable = read8(REG_ENABLE);
+    if (!selectRegisterBank(true)) {
+        return false;
+    }
+
+    uint8_t enable = 0;
+    if (!readBytes(REG_ENABLE, &enable, 1)) {
+        selectRegisterBank(false);
+        return false;
+    }
     if ((enable & ENABLE_PON) == 0) {
         enable |= ENABLE_PON;
         if (!write8(REG_ENABLE, enable)) {
+            selectRegisterBank(false);
             return false;
         }
         delay(10);
     }
 
     enable |= ENABLE_SP_EN;
-    return write8(REG_ENABLE, enable);
+    const bool enabled = write8(REG_ENABLE, enable);
+    const bool bankRestored = selectRegisterBank(false);
+    return enabled && bankRestored;
 }
 
 bool AS7343::waitForData(uint32_t timeoutMs) {
@@ -210,9 +243,18 @@ void AS7343::setIntegration() {
 }
 
 void AS7343::powerOn() {
-    uint8_t enable = read8(REG_ENABLE);
+    if (!selectRegisterBank(true)) {
+        return;
+    }
+
+    uint8_t enable = 0;
+    if (!readBytes(REG_ENABLE, &enable, 1)) {
+        selectRegisterBank(false);
+        return;
+    }
     enable = applyMask(enable, ENABLE_PON, true);
     write8(REG_ENABLE, enable);
+    selectRegisterBank(false);
     delay(10);
 }
 
@@ -243,38 +285,210 @@ void AS7343::ledOff() {
 }
 
 bool AS7343::enableFlickerDetection(bool enable) {
-    if (!sensorPresent()) {
+    if (!selectRegisterBank(true)) {
         return false;
     }
 
-    uint8_t value = read8(REG_ENABLE);
+    uint8_t value = 0;
+    if (!readBytes(REG_ENABLE, &value, 1)) {
+        selectRegisterBank(false);
+        return false;
+    }
+
     value = applyMask(value, ENABLE_FDEN, enable);
-    return write8(REG_ENABLE, value);
+    const bool writeSucceeded = write8(REG_ENABLE, value);
+    const bool bankRestored = selectRegisterBank(false);
+    return writeSucceeded && bankRestored;
 }
 
 bool AS7343::flickerDetectionValid() {
-    return sensorPresent() && (read8(REG_FD_STATUS) & FD_VALID) != 0;
+    uint8_t status = 0;
+    return readFlickerStatus(status) && (status & FD_VALID) != 0;
 }
 
 bool AS7343::flickerDetectionSaturated() {
-    return sensorPresent() && (read8(REG_FD_STATUS) & FD_SAT) != 0;
+    uint8_t status = 0;
+    return readFlickerStatus(status) && (status & FD_SAT) != 0;
 }
 
-uint16_t AS7343::flickerFrequencyHz() {
-    if (!sensorPresent()) {
-        return 0;
+bool AS7343::getFlickerInfo(bool& detected, uint16_t& frequencyHz) {
+    detected = false;
+    frequencyHz = 0;
+
+    uint8_t status = 0;
+    if (!readFlickerStatus(status)) {
+        return false;
     }
 
-    const uint8_t status = read8(REG_FD_STATUS);
+    if ((status & FD_VALID) == 0 || (status & FD_SAT) != 0) {
+        return true;
+    }
+
     if ((status & (FD_100HZ_DET | FD_100HZ_VALID)) ==
         (FD_100HZ_DET | FD_100HZ_VALID)) {
-        return 100;
+        detected = true;
+        frequencyHz = 100;
+    } else if ((status & (FD_120HZ_DET | FD_120HZ_VALID)) ==
+               (FD_120HZ_DET | FD_120HZ_VALID)) {
+        detected = true;
+        frequencyHz = 120;
     }
-    if ((status & (FD_120HZ_DET | FD_120HZ_VALID)) ==
-        (FD_120HZ_DET | FD_120HZ_VALID)) {
-        return 120;
+    return true;
+}
+
+bool AS7343::readFlickerStatus(uint8_t& status) {
+    return selectRegisterBank(false) && readBytes(REG_FD_STATUS, &status, 1);
+}
+
+bool AS7343::configureFlickerFifo(uint16_t integrationTicks) {
+    if (integrationTicks == 0 || integrationTicks >= 256) {
+        return false;
     }
-    return 0;
+
+    if (!selectRegisterBank(true)) {
+        return false;
+    }
+
+    uint8_t enable = 0;
+    if (!readBytes(REG_ENABLE, &enable, 1)) {
+        selectRegisterBank(false);
+        return false;
+    }
+
+    enable |= ENABLE_PON;
+    enable &= static_cast<uint8_t>(~(ENABLE_FDEN | ENABLE_SP_EN));
+    if (!write8(REG_ENABLE, enable)) {
+        selectRegisterBank(false);
+        return false;
+    }
+    const bool bankRestored = selectRegisterBank(false);
+    if (!bankRestored) {
+        return false;
+    }
+    delay(10);
+
+    uint8_t fdTimeHighGain = 0;
+    uint8_t cfg20 = 0;
+    uint8_t fifoConfig = 0;
+    if (!readBytes(REG_FD_TIME_2, &fdTimeHighGain, 1) ||
+        !readBytes(REG_CFG20, &cfg20, 1) ||
+        !readBytes(REG_FIFO_CFG0, &fifoConfig, 1)) {
+        return false;
+    }
+
+    fdTimeHighGain = static_cast<uint8_t>(
+        (fdTimeHighGain & 0xF8) | ((integrationTicks >> 8) & 0x07));
+    cfg20 |= FIFO_8BIT_FLICKER;
+    fifoConfig |= FIFO_WRITE_FLICKER;
+
+    if (!write8(REG_FD_TIME_1, static_cast<uint8_t>(integrationTicks)) ||
+        !write8(REG_FD_TIME_2, fdTimeHighGain) ||
+        !write8(REG_CFG20, cfg20) ||
+        !write8(REG_FIFO_CFG0, fifoConfig) ||
+        !write8(REG_CONTROL, FIFO_CLEAR)) {
+        return false;
+    }
+
+    if (!selectRegisterBank(true)) {
+        return false;
+    }
+    if (!readBytes(REG_ENABLE, &enable, 1)) {
+        selectRegisterBank(false);
+        return false;
+    }
+    enable |= ENABLE_PON | ENABLE_FDEN | ENABLE_SP_EN;
+    const bool enabled = write8(REG_ENABLE, enable);
+    const bool restored = selectRegisterBank(false);
+    return enabled && restored;
+}
+
+bool AS7343::readFlickerFifo(uint8_t* samples, uint16_t capacity,
+                             uint16_t& sampleCount) {
+    sampleCount = 0;
+    if (samples == nullptr || capacity < 2 || !selectRegisterBank(false)) {
+        return false;
+    }
+
+    uint8_t fifoLevel = 0;
+    if (!readBytes(REG_FIFO_LVL, &fifoLevel, 1)) {
+        return false;
+    }
+
+    const uint16_t entriesToRead =
+        (capacity / 2 < fifoLevel) ? capacity / 2 : fifoLevel;
+    for (uint16_t entry = 0; entry < entriesToRead; ++entry) {
+        if (!readBytes(REG_FDATA_L, samples + sampleCount, 2)) {
+            return false;
+        }
+        sampleCount += 2;
+    }
+    return true;
+}
+
+bool AS7343::flickerFifoOverflowed(bool& overflowed) {
+    overflowed = false;
+    if (!selectRegisterBank(false)) {
+        return false;
+    }
+    uint8_t status = 0;
+    if (!readBytes(REG_STATUS4, &status, 1)) {
+        return false;
+    }
+    overflowed = (status & FIFO_OVERFLOW) != 0;
+    return true;
+}
+
+bool AS7343::estimateFlickerFrequencyHz(const uint8_t* samples,
+                                        uint16_t sampleCount,
+                                        float sampleRateHz,
+                                        float& frequencyHz) {
+    frequencyHz = 0.0f;
+    if (samples == nullptr || sampleCount < 4 ||
+        !isfinite(sampleRateHz) || sampleRateHz <= 0.0f) {
+        return false;
+    }
+
+    uint32_t sum = 0;
+    for (uint16_t i = 0; i < sampleCount; ++i) {
+        sum += samples[i];
+    }
+    const float mean = static_cast<float>(sum) / sampleCount;
+
+    uint16_t risingCrossings = 0;
+    float firstCrossing = 0.0f;
+    float lastCrossing = 0.0f;
+    float previous = static_cast<float>(samples[0]) - mean;
+
+    for (uint16_t i = 1; i < sampleCount; ++i) {
+        const float current = static_cast<float>(samples[i]) - mean;
+        if (previous <= 0.0f && current > 0.0f) {
+            const float fraction = -previous / (current - previous);
+            const float crossing = static_cast<float>(i - 1) + fraction;
+            if (risingCrossings == 0) {
+                firstCrossing = crossing;
+            }
+            lastCrossing = crossing;
+            ++risingCrossings;
+        }
+        previous = current;
+    }
+
+    if (risingCrossings < 3 || lastCrossing <= firstCrossing) {
+        return false;
+    }
+
+    frequencyHz = (static_cast<float>(risingCrossings - 1) * sampleRateHz) /
+                  (lastCrossing - firstCrossing);
+    return true;
+}
+
+bool AS7343::selectRegisterBank(bool bank1) {
+    uint8_t cfg0 = 0;
+    if (!readBytes(REG_CFG0, &cfg0, 1)) {
+        return false;
+    }
+    cfg0 = applyMask(cfg0, REGISTER_BANK1, bank1);
+    return write8(REG_CFG0, cfg0);
 }
 
 bool AS7343::readRaw18(uint16_t raw[18]) {

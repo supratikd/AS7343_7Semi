@@ -54,13 +54,22 @@ public:
 	bool enableFlickerDetection(bool enable = true);
 	bool flickerDetectionValid();
 	bool flickerDetectionSaturated();
-	uint16_t flickerFrequencyHz();
+	bool getFlickerInfo(bool& detected, uint16_t& frequencyHz);
+	bool configureFlickerFifo(uint16_t integrationTicks = 200);
+	bool readFlickerFifo(uint8_t* samples, uint16_t capacity, uint16_t& sampleCount);
+	bool flickerFifoOverflowed(bool& overflowed);
+	static bool estimateFlickerFrequencyHz(const uint8_t* samples,
+	                                       uint16_t sampleCount,
+	                                       float sampleRateHz,
+	                                       float& frequencyHz);
 
 private:
 	bool startMeasurement();
 	bool waitForData(uint32_t timeoutMs);
 	bool readRaw18(uint16_t raw[18]);
 	bool read16(uint8_t reg, uint16_t& value);  
+	bool readFlickerStatus(uint8_t& status);
+	bool selectRegisterBank(bool bank1);
 
 	float _f1;
 	float _f2;
