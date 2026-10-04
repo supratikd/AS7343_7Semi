@@ -1,0 +1,54 @@
+{
+    "configurations": [
+        {
+            "name": "Arduino ESP32",
+            "compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/esp32/tools/esp-x32/2601/bin/xtensa-esp32-elf-g++.exe",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.12/cores/esp32",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.12/variants/esp32",
+                "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.12/libraries/**/src"
+            ],
+            "defines": [
+                "ARDUINO=10819",
+                "ARDUINO_ARCH_ESP32",
+                "ESP32"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.12/cores/esp32",
+                    "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.12/variants/esp32",
+                    "${env:LOCALAPPDATA}/Arduino15/packages/esp32/hardware/esp32/3.3.12/libraries/**/src"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        },
+        {
+            "name": "Arduino AVR",
+            "compilerPath": "${env:LOCALAPPDATA}/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/bin/avr-g++.exe",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.8/cores/arduino",
+                "${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.8/variants/standard",
+                "${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.8/libraries/Wire/src"
+            ],
+            "defines": [
+                "ARDUINO=10819",
+                "ARDUINO_ARCH_AVR",
+                "ARDUINO_AVR_UNO",
+                "F_CPU=16000000L"
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}",
+                    "${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.8/cores/arduino",
+                    "${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.8/variants/standard",
+                    "${env:LOCALAPPDATA}/Arduino15/packages/arduino/hardware/avr/1.8.8/libraries/Wire/src"
+                ],
+                "limitSymbolsToIncludedHeaders": true
+            }
+        }
+    ],
+    "version": 4
+}
