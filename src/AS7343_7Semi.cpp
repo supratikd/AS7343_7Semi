@@ -65,8 +65,34 @@ bool AS7343_7Semi::flickerDetectionSaturated() {
 	return _initialized && spectralSensor.flickerDetectionSaturated();
 }
 
-uint16_t AS7343_7Semi::flickerFrequencyHz() {
-	return _initialized ? spectralSensor.flickerFrequencyHz() : 0;
+bool AS7343_7Semi::getFlickerInfo(bool& detected, uint16_t& frequencyHz) {
+	detected = false;
+	frequencyHz = 0;
+	return _initialized && spectralSensor.getFlickerInfo(detected, frequencyHz);
+}
+
+bool AS7343_7Semi::configureFlickerFifo(uint16_t integrationTicks) {
+	return _initialized && spectralSensor.configureFlickerFifo(integrationTicks);
+}
+
+bool AS7343_7Semi::readFlickerFifo(uint8_t* samples, uint16_t capacity,
+                                   uint16_t& sampleCount) {
+	sampleCount = 0;
+	return _initialized &&
+	       spectralSensor.readFlickerFifo(samples, capacity, sampleCount);
+}
+
+bool AS7343_7Semi::flickerFifoOverflowed(bool& overflowed) {
+	overflowed = false;
+	return _initialized && spectralSensor.flickerFifoOverflowed(overflowed);
+}
+
+bool AS7343_7Semi::estimateFlickerFrequencyHz(const uint8_t* samples,
+                                             uint16_t sampleCount,
+                                             float sampleRateHz,
+                                             float& frequencyHz) {
+	return AS7343::estimateFlickerFrequencyHz(samples, sampleCount,
+	                                          sampleRateHz, frequencyHz);
 }
 
 void AS7343_7Semi::configureAutoSMUX() {
