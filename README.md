@@ -7,6 +7,12 @@ VIS/CLEAR readings, and the AS7343 flicker-detection block.
 The spectral getters return **raw sensor counts**. They are not calibrated
 irradiance, lux, or color values.
 
+## Working demo
+
+This GIF is a working demo of the AS7343 spectral monitor in action:
+
+![AS7343 working demo](assets/as7343.gif)
+
 ## Why this library?
 
 Working examples for the 7Semi AS7343 board are hard to find, and the options
